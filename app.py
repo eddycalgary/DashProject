@@ -23,6 +23,8 @@ api_response = requests.get('https://covid19api.herokuapp.com/confirmed')
 from pandas.io.json import json_normalize
 df = json_normalize(api_response.json()['locations'][35])
 BC = json_normalize(api_response.json()['locations'][36])
+#manitoba
+Man = json_normalize(api_response.json()['locations'][38])
 Nova = json_normalize(api_response.json()['locations'][41])
 ON=json_normalize(api_response.json()['locations'][42])
 QB = json_normalize(api_response.json()['locations'][44])
@@ -35,6 +37,9 @@ test_data['date_report'] = pd.to_datetime(test_data['date_report'], dayfirst=Tru
 new_table = test_data.groupby(['date_report', 'province'], as_index=False).count()
 new_table['month'] = new_table['date_report'].dt.month_name()
 new_table['month number'] = new_table['date_report'].dt.month
+new_table['Acc'] = new_table.groupby('province')['case_id'].cumsum()
+prov = ['Repatriated', 'PEI']
+new_table = new_table[~new_table['province'].isin(prov)]
 final = new_table.groupby(['province','month','month number'], as_index=False)['case_id'].sum().sort_values(by=['month number'])
 test_table_week = new_table.groupby(['province', pd.Grouper(key='date_report', freq='W-SUN')])['case_id'].sum().reset_index().sort_values('date_report').rename(columns={'case_id':'Total cases per week'})
 test_table_ave = new_table.groupby(['province', pd.Grouper(key='date_report', freq='W-SUN')])['case_id'].mean().reset_index().sort_values('date_report').rename(columns={'case_id':'Ave cases per week'}).round()
@@ -43,6 +48,7 @@ final_test_ave_sum['week_number'] = final_test_ave_sum['date_report'].dt.week
 
 print(new_table)
 
+"""
 def clean(table):
 
     df = table.transpose()
@@ -72,10 +78,11 @@ NS = clean(Nova)
 Ontario = clean(ON)
 Quebec = clean(QB)
 Sask = clean(SK)
+Manitoba = clean(Man)
 
 
-list_prov = dict(Alberta=Alberta,BC=BC_1, NS=NS, Ontario=Ontario,Quebec=Quebec,Sask=Sask)
-
+list_prov = dict(Alberta=Alberta,BC=BC_1, NS=NS, Ontario=Ontario,Quebec=Quebec,Saskatchewan=Sask, Manitoba=Manitoba)
+"""
 app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right": 'auto', "width":"100%" },children=[
     html.H1('Covid Data for Canada', style={"text-align": "center", 'backgroundColor': '#1a2d46', 'color': '#ffffff', 'padding-bottom': '0%'}),
     dcc.Tabs([
@@ -101,15 +108,17 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
 
                 ])
             ], type='graph', fullscreen=False),
+
             dcc.Interval(
                 id='interval-component',
-                interval=3600*1000,
+                interval=2000*1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
-                html.Div(className='test1', style={'display': 'flex'},children=[
-                    dcc.Graph(id='slider-graph', animate=True, style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,'padding-top': '1%', 'height': 500}),
-                    dcc.Graph(id='testtest', animate=True, style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,'padding-top': '1%', 'height': 500}),
+                html.Div(className='row',children=[
+
+                    dcc.Graph(id='slider-graph', animate=True,style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,'padding-top': '1%', 'padding-bottom': '0%','height': 500}),
+                    dcc.Graph(id='testtest', animate=True, style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40, 'height': 500}),
                 ]),
             ]),
 
@@ -137,14 +146,14 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
                 ], type='default', fullscreen=False),
                 dcc.Interval(
                     id='interval_for_weekly_graph',
-                    interval=30*1000,
+                    interval=2000*1000,
                     n_intervals=0
                 ),
                 dcc.Loading(children=[
                     html.Div(className='test3', children=[
                         dcc.Graph(id='slider-graph-third', animate=True,style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40, 'padding-top': '1%','height': 500})
                     ])
-                ]),
+                ], type='graph'),
 
         ])
     ], style=dict(backgroundColor='black')),
@@ -216,16 +225,17 @@ def update(value, n_intervals):
 
 @app.callback(
     Output('testtest', 'figure'),
-    [Input('input', 'value')]
+    [Input('input', 'value'), Input('interval-component', 'n_intervals')]
 )
-def update_second_tap(value2):
+def update_second_tap(value2, n_interval):
     print(f"this is the second chart {value2}")
-    if value2 in list_prov.keys() and value2:
 
-        print(list_prov[value2])
+    if value2:
+
+
         """set x value"""
-        x = list_prov[value2].loc[:, 'index']
-        y = list_prov[value2].loc[:, 'values']
+        x = new_table[new_table['province']==value2]['date_report']
+        y = new_table[new_table['province']==value2]['Acc']
 
 
 
@@ -251,7 +261,9 @@ def update_second_tap(value2):
 
         return {'data': data,'layout': layout}
 
-    elif value2 is None or value2 not in list_prov.keys():
+    elif value2 is None or n_interval:
+
+        time.sleep(2)
 
         layout = go.Layout(
             paper_bgcolor="white",
@@ -260,7 +272,7 @@ def update_second_tap(value2):
         )
 
         return {'data': [(
-            {'x': list_prov[x]['index'], 'y': list_prov[x]['values'], 'name': x}) for x in list_prov.keys()], 'layout': layout}
+            {'x': new_table[new_table['province']==x]['date_report'], 'y': new_table[new_table['province']==x]['Acc'], 'name': x}) for x in new_table['province'].unique()], 'layout': layout}
 
 @app.callback(
     [Output('slider-graph-third', 'figure'), Output('third-tap-result', 'children'), Output('third-tap-result_2', 'children'), Output('third-tap-result_3', 'children')],
