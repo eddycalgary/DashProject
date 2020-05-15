@@ -87,12 +87,10 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
     html.H1('Covid Data for Canada', style={"text-align": "center", 'backgroundColor': '#1a2d46', 'color': '#ffffff', 'padding-bottom': '0%'}),
     dcc.Tabs([
         dcc.Tab(label='Daily cases per province', style={'text-shadow': '2px 2px 5px grey', 'font-size': 20}, children=[
-            html.Div(className='row', style={'display': 'flex'},children=[
-                html.Div(className='col', children=[
-                    html.H6("""Select a province"""),
-                ]),
-                html.Div(className='col', children=[
-                    html.H6(style={'text-align': 'right'})
+            html.Div(className='row', style={'columnCount': 2},children=[
+                html.Div(children=[
+                    html.H6("""Select a province""", className='col s12 m6', style={'width': '50%'}),
+                    html.A("Edgar Lizarraga Linkedin profile", href='https://www.linkedin.com/in/edgar-lizarraga/', target='_blank', style={ "display": "block", "text-align": "right",'padding-top': '20px'}),
                 ]),
 
             ]),
@@ -104,6 +102,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
                 placeholder='Select province',
                 multi=False
             ),
+
             dcc.Loading(loading_state=dict(is_loading=True) ,
                         children=[
                 html.Div(className='row', style={'display': 'flex', 'margin-left': '1%', 'margin-right': '1%'}, children=[
@@ -112,7 +111,8 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
                     html.H4(id='third', className='col s12 m6',
                             style={'backgroundColor': '#9b9b69', 'color': 'white', 'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',"box-shadow": '10px 10px 5px grey','width': '30%', 'display': 'online-block', 'text-align': 'center'}),
                     html.H4(id='fourth', className='col s12 m6',
-                            style={'backgroundColor': '#a77e55', 'color': 'white', 'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',"box-shadow": '10px 10px 5px grey','width': '30%', 'display': 'online-block', 'text-align': 'center'})
+                            style={'backgroundColor': '#a77e55', 'color': 'white', 'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',"box-shadow": '10px 10px 5px grey','width': '30%', 'display': 'online-block', 'text-align': 'center'}),
+
 
                 ])
             ], type='graph', fullscreen=False),
@@ -127,6 +127,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
 
                     dcc.Graph(id='slider-graph', animate=True,style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,'padding-top': '1%', 'padding-bottom': '0%','height': 500}),
                     dcc.Graph(id='testtest', animate=True, style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40, 'height': 500}),
+
                 ]),
             ]),
 
@@ -165,7 +166,8 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
 
 
         ])
-    ], style=dict(backgroundColor='black'))
+    ], style=dict(backgroundColor='black')),
+
 
 ])
 
