@@ -103,7 +103,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
             ], type='graph', fullscreen=False),
             dcc.Interval(
                 id='interval-component',
-                interval=30*1000,
+                interval=3600*1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
