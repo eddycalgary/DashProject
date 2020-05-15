@@ -15,7 +15,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(external_stylesheets = external_stylesheets)
 
-
+server = app.server
 
 # Get data on only confirmed cases
 api_response = requests.get('https://covid19api.herokuapp.com/confirmed')
@@ -326,4 +326,4 @@ def weekly(value3, n_intervals):
         ], 'layout': layout}, "","", ""
 
 if __name__=="__main__":
-    app.run_server(host='0.0.0.0', port=8750)
+    app.run_server(debug=True)
