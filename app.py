@@ -47,6 +47,26 @@ final_test_ave_sum = pd.merge(test_table_week, test_table_ave, on=['date_report'
 final_test_ave_sum['week_number'] = final_test_ave_sum['date_report'].dt.week
 
 print(new_table)
+def canada(interval):
+    dtt = pd.read_csv(
+        'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv')
+    dt = pd.read_csv('https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv')
+    canada = dt[dt['location'] == 'Canada']
+
+    dtt1 = dtt[dtt['Country/Region'] == 'Canada']
+
+    canada['date'] = pd.to_datetime(canada['date'])
+    Transpose_data = dtt1.T.reset_index(level=0).loc[4:, :]
+    Transpose_data['index'] = pd.to_datetime(Transpose_data['index'])
+    Transpose_data.rename(columns={36: 'values', 'index': 'date'}, inplace=True)
+    Transpose_data['values'] = pd.to_numeric(Transpose_data['values'])
+
+    trial_table = pd.merge(canada, Transpose_data, on='date', how='left')
+    # calculate difference bewteen total infections vs recovered per day
+    trial_table['diff'] = trial_table['total_cases'] - trial_table['values']
+
+    return trial_table
+
 
 """
 def clean(table):
@@ -123,13 +143,26 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
                 n_intervals=0
             ),
             dcc.Loading(children=[
-                html.Div(className='row',children=[
+                html.Div(className='row',style={'columnCount': 2},children=[
+                    html.Div(children=[
+                        dcc.Graph(id='slider-graph', animate=True,
+                                  style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,
+                                         'padding-top': '1%', 'padding-bottom': '0%', 'height': 500}
+                                  ),
+                        dcc.Graph(id='testtest', animate=True,
+                                  style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,
+                                         'height': 500}
+                                  ),
 
-                    dcc.Graph(id='slider-graph', animate=True,style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,'padding-top': '1%', 'padding-bottom': '0%','height': 500}),
-                    dcc.Graph(id='testtest', animate=True, style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40, 'height': 500}),
+                    ]),
 
                 ]),
-            ]),
+            ],type='graph', fullscreen=False),
+            dcc.Loading(children=[
+                html.Div(children=[
+                    dcc.Graph(id='testtest2', animate=True,style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40, 'height': 500}),
+                ])
+            ], type='doth', fullscreen=False),
 
         ]),
         dcc.Tab(label='Weekly average', style={'text-shadow': '2px 2px 5px grey', 'font-size': 20}, children=[
@@ -183,7 +216,7 @@ def update(value, n_intervals):
 
     if value:
 
-        time.sleep(2)
+        time.sleep(1)
         x = new_table[new_table['province']==value]['date_report']
         y = new_table[new_table['province']==value]['case_id']
 
@@ -225,7 +258,7 @@ def update(value, n_intervals):
 
     if value is None or n_intervals:
         print('lets see')
-        time.sleep(2)
+        time.sleep(1)
 
         layout = go.Layout(
             paper_bgcolor="white",
@@ -244,7 +277,7 @@ def update_second_tap(value2, n_interval):
 
     if value2:
 
-
+        time.sleep(1)
         """set x value"""
         x = new_table[new_table['province']==value2]['date_report']
         y = new_table[new_table['province']==value2]['Acc']
@@ -276,7 +309,7 @@ def update_second_tap(value2, n_interval):
 
     elif value2 is None or n_interval:
 
-        time.sleep(2)
+        time.sleep(1)
 
         layout = go.Layout(
             paper_bgcolor="white",
@@ -300,7 +333,7 @@ def weekly(value3, n_intervals):
 
     if value3:
 
-        time.sleep(2)
+        time.sleep(1)
 
         print(y)
 
@@ -340,7 +373,7 @@ def weekly(value3, n_intervals):
     elif value3 is None or n_intervals:
 
         print(f'third {value3} and {n_intervals}')
-        time.sleep(2)
+        time.sleep(1)
 
         layout = go.Layout(
             paper_bgcolor='white',
@@ -350,6 +383,65 @@ def weekly(value3, n_intervals):
         return {'data': [
             {'x': final_test_ave_sum[final_test_ave_sum['province']==j]['date_report'], 'y': final_test_ave_sum[final_test_ave_sum['province']==j]['Ave cases per week'], "name":j, "fill":'tozeroy'} for j in final_test_ave_sum['province'].unique()
         ], 'layout': layout}, "","", ""
+
+@app.callback(
+    Output('testtest2', 'figure'),
+    [Input('interval-component', 'n_intervals')]
+)
+def update_second_tap(n_interval):
+    print(f"this is the second chart {n_interval}")
+    time.sleep(1)
+    table = canada(n_interval)
+
+    x = table['date']
+    y = table['total_cases']
+
+
+    tap2_grapgh = go.Scatter(
+        x=x,
+        y=y,
+        name='Acc values for Canada',
+        mode='lines',
+        line=dict(shape='spline',
+                  smoothing=1.3,
+                  color='blue'),
+        fill='tozeroy'
+    )
+
+    current = go.Scatter(
+        x=x,
+        y=table['diff'],
+        name='Still infected',
+        line=dict(shape='spline',
+                  smoothing=1.3,
+                  color='yellow'),
+        fill='tozeroy'
+    )
+
+    deaths = go.Scatter(
+        x=x,
+        y=table['total_deaths'],
+        name='Acc deaths',
+        line=dict(shape='spline',
+                  smoothing=1.3,
+                  color='red'),
+        fill='tozeroy'
+    )
+
+
+    data= [tap2_grapgh, current, deaths]
+
+    layout = go.Layout(
+        paper_bgcolor="white",
+        plot_bgcolor='white',
+        xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)]),
+        yaxis=dict(range=[min(y), max(y)]),
+        font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
+        title='Canada totals'
+    )
+
+    return {'data': data,'layout': layout}
+
 
 if __name__=="__main__":
     app.run_server(debug=True)
