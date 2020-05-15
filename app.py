@@ -437,7 +437,12 @@ def update_second_tap(n_interval):
         xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)]),
         yaxis=dict(range=[min(y), max(y)]),
         font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
-        title='Canada totals'
+        title='Canada totals',
+        legend=dict(orientation='h',
+                    yanchor='top',
+                    xanchor='center',
+                    y=1,
+                    x=0.5)
     )
 
     return {'data': data,'layout': layout}
