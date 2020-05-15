@@ -87,8 +87,16 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
     html.H1('Covid Data for Canada', style={"text-align": "center", 'backgroundColor': '#1a2d46', 'color': '#ffffff', 'padding-bottom': '0%'}),
     dcc.Tabs([
         dcc.Tab(label='Daily cases per province', style={'text-shadow': '2px 2px 5px grey', 'font-size': 20}, children=[
+            html.Div(className='row', style={'display': 'flex'},children=[
+                html.Div(className='col', children=[
+                    html.H6("""Select a province"""),
+                ]),
+                html.Div(className='col', children=[
+                    html.H6(style={'text-align': 'right'})
+                ]),
 
-            html.H6("""Select a province"""),
+            ]),
+
             dcc.Dropdown(
                 id='input',
                 style=dict(width='40%', verticalAlign='middle'),
@@ -140,7 +148,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
                                 html.H4(id='third-tap-result_2', className='col s12 m6',
                                     style={'backgroundColor': '#9b9b69', 'color': 'white', 'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',"box-shadow": '10px 10px 5px grey','width': '30%', 'display': 'online-block', 'text-align': 'center'}),
                                 html.H4(id='third-tap-result_3', className='col s12 m6',
-                                    style={'backgroundColor': '#a77e55', 'color': 'white', 'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',"box-shadow": '10px 10px 5px grey','width': '30%', 'display': 'online-block', 'text-align': 'center'})
+                                    style={'backgroundColor': '#a77e55', 'color': 'white', 'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',"box-shadow": '10px 10px 5px grey','width': '30%', 'display': 'online-block', 'text-align': 'center'}),
 
                             ])
                 ], type='default', fullscreen=False),
@@ -155,8 +163,9 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto',"margin-right":
                     ])
                 ], type='graph'),
 
+
         ])
-    ], style=dict(backgroundColor='black')),
+    ], style=dict(backgroundColor='black'))
 
 ])
 
@@ -188,6 +197,7 @@ def update(value, n_intervals):
             line=dict(shape='spline',
                       smoothing=1.3,
                       color='blue'),
+            fill='tozeroy'
         )
 
         trace = go.Scatter(
@@ -195,7 +205,7 @@ def update(value, n_intervals):
             y=ave_value,
             name='Ave',
             line=dict(width=3,
-                      color='red')
+                      color='red'),
         )
 
         data = [graph, trace]
@@ -220,7 +230,7 @@ def update(value, n_intervals):
             plot_bgcolor='white',
         )
         return {'data': [
-            ({'x': new_table[new_table['province']==i]['date_report'], 'y': new_table[new_table['province']==i]['case_id'], 'name': i,'type':'scatter', 'mode':'lines', 'line': {'shape': 'spline', 'smoothing':1.3}}) for i in new_table['province'].unique()
+            ({'x': new_table[new_table['province']==i]['date_report'], 'y': new_table[new_table['province']==i]['case_id'], 'name': i,'type':'scatter', 'mode':'lines', "fill":'tozeroy','line': {'shape': 'spline', 'smoothing':1.3}}) for i in new_table['province'].unique()
         ],'layout': layout}, "","",""
 
 @app.callback(
@@ -247,6 +257,7 @@ def update_second_tap(value2, n_interval):
             line=dict(shape='spline',
                       smoothing=1.3,
                       color='blue'),
+            fill='tozeroy'
         )
         data= [tap2_grapgh]
 
@@ -272,7 +283,7 @@ def update_second_tap(value2, n_interval):
         )
 
         return {'data': [(
-            {'x': new_table[new_table['province']==x]['date_report'], 'y': new_table[new_table['province']==x]['Acc'], 'name': x}) for x in new_table['province'].unique()], 'layout': layout}
+            {'x': new_table[new_table['province']==x]['date_report'], 'y': new_table[new_table['province']==x]['Acc'], 'name': x, "fill":'tozeroy'}) for x in new_table['province'].unique()], 'layout': layout}
 
 @app.callback(
     [Output('slider-graph-third', 'figure'), Output('third-tap-result', 'children'), Output('third-tap-result_2', 'children'), Output('third-tap-result_3', 'children')],
@@ -301,7 +312,8 @@ def weekly(value3, n_intervals):
             mode='markers',
             marker=dict(
                 color='red',
-                size=20)
+                size=7),
+            fill = 'tozeroy'
         )
 
         second = go.Bar(
@@ -334,7 +346,7 @@ def weekly(value3, n_intervals):
         )
 
         return {'data': [
-            {'x': final_test_ave_sum[final_test_ave_sum['province']==j]['date_report'], 'y': final_test_ave_sum[final_test_ave_sum['province']==j]['Ave cases per week'], "name":j} for j in final_test_ave_sum['province'].unique()
+            {'x': final_test_ave_sum[final_test_ave_sum['province']==j]['date_report'], 'y': final_test_ave_sum[final_test_ave_sum['province']==j]['Ave cases per week'], "name":j, "fill":'tozeroy'} for j in final_test_ave_sum['province'].unique()
         ], 'layout': layout}, "","", ""
 
 if __name__=="__main__":
