@@ -348,7 +348,9 @@ def update(value, n_intervals):
             paper_bgcolor="white",
             plot_bgcolor='white',
         )
-        return "", "", "", "", {'display': 'none'}, ""
+        return {'data': [
+            ({'x': name, 'y': name}) for name in bc['attributes.Province'].unique()
+        ]}, "", "", "", {'display': 'none'}, ""
 
 
 @app.callback(
