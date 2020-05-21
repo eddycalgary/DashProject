@@ -490,7 +490,7 @@ def weekly(value3, n_intervals):
             x=x,
             y=y2,
             yaxis='y1',
-            name='Weekly sum',
+            name='Weekly totals',
             line=dict(width=3,
                       color='#FAF0E6'),
             mode='markers',
