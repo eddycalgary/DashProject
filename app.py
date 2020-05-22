@@ -1,10 +1,12 @@
 import dash
 import datetime
+from datetime import timedelta
 import dash_html_components as html
 import dash_core_components as dcc
 import requests
 import time
 import pandas as pd
+import numpy as np
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 
@@ -33,26 +35,13 @@ QB = json_normalize(api_response.json()['locations'][44])
 SK = json_normalize(api_response.json()['locations'][45])
 """
 # NEW API WITH CONFIRMED CASES PER DAY
+#WE NEED THIS WITHOUT CALLING API TO GET PROPER VALUES INTO THE DROPDOWN
 
-api_response = requests.get(
-    'https://services9.arcgis.com/pJENMVYPQqZZe20v/arcgis/rest/services/province_daily_totals/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json')
-bc = json_normalize(api_response.json()['features'])
-bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'], unit='ms')
-bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'])
-clean_list = ['REPATRIATED CDN', 'CANADA', 'PEI', "REPATRIATED", 'CANADA', 'NEWFOUNDLAND AND LABRADOR']
-bc = bc[~bc['attributes.Province'].isin(clean_list)]
-bc.sort_values(by=['attributes.OBJECTID'], inplace=True)
-# still infected
-bc['current'] = bc['attributes.TotalCases'] - bc['attributes.TotalRecovered']
-bc['attributes.Province'].replace({"BC": 'BRITISH COLUMBIA'}, inplace=True)
-mean = bc.groupby(['attributes.Province', pd.Grouper(key='attributes.SummaryDate', freq='W-SUN')])[
-    'attributes.DailyTotals'].mean().reset_index().round()
-sum = bc.groupby(['attributes.Province', pd.Grouper(key='attributes.SummaryDate', freq='W-SUN')])[
-    'attributes.DailyTotals'].sum().reset_index().round()
-newtable_group = pd.merge(mean, sum, on=['attributes.SummaryDate', 'attributes.Province'], how='left')
-newtable_group.rename(
-    columns={'attributes.SummaryDate': 'date', 'attributes.DailyTotals_x': 'Ave', 'attributes.DailyTotals_y': 'Sum',
-             "attributes.Province": 'Province'}, inplace=True)
+provinces = ['ALBERTA', 'NWT', 'YUKON', 'SASKATCHEWAN', 'ONTARIO',
+       'NEW BRUNSWICK', 'NOVA SCOTIA', 'NL', 'MANITOBA',
+       'BRITISH COLUMBIA', 'NUNAVUT', 'QUEBEC', 'PRINCE EDWARD ISLAND',
+       'NORTHWEST TERRITORIES']
+
 
 test_data = pd.read_csv('https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/cases.csv')
 test_data['date_report'] = pd.to_datetime(test_data['date_report'], dayfirst=True)
@@ -132,13 +121,15 @@ Manitoba = clean(Man)
 list_prov = dict(Alberta=Alberta,BC=BC_1, NS=NS, Ontario=Ontario,Quebec=Quebec,Saskatchewan=Sask, Manitoba=Manitoba)
 """
 app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right": 'auto', "width": "100%"}, children=[
-    html.H1('Covid Data for Canada',
+    html.H1('Covid-19 data for Canada',
             style={"text-align": "center", 'backgroundColor': '#1a2d46', 'color': '#ffffff', 'padding-bottom': '0%'}),
     dcc.Tabs([
-        dcc.Tab(label='Daily cases per province', style={'text-shadow': '2px 2px 5px grey', 'font-size': 20}, children=[
+        dcc.Tab(label='Daily cases', style={'text-shadow': '2px 2px 5px grey', 'font-size': 20}, children=[
             html.Div(className='row', style={'columnCount': 2}, children=[
                 html.Div(children=[
-                    html.H6("""Select a province""", className='col s12 m6', style={'width': '50%'}),
+
+                    html.H6("""Select a province""", className='col s12 m6', style={"rowCount": 2,'width': '100%'}),
+                    html.H6("Clear dropdown to see Canada cases", style={'font-size': "small", "font-style": "italic"}),
                     html.A([
                         html.Img(
                             src='https://cdn2.iconfinder.com/data/icons/linkedin-ui-flat/48/LinkedIn_UI-03-512.png',
@@ -152,7 +143,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
             dcc.Dropdown(
                 id='input',
                 style=dict(width='40%', verticalAlign='middle'),
-                options=[({'label': i, 'value': i}) for i in bc['attributes.Province'].unique()],
+                options=[({'label': i, 'value': i}) for i in provinces],
                 placeholder='Select province',
                 multi=False
             ),
@@ -177,18 +168,40 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
                                                    "box-shadow": '10px 10px 5px grey', 'width': '30%',
                                                    'display': 'online-block', 'text-align': 'center'}),
                                     html.H4(id='fifth', className='col s12 m3',
-                                            style={'font-size': '18px', 'backgroundColor': '#a77e55', 'color': 'white',
+                                            style={'font-size': '18px', 'backgroundColor': '#F0E68C', 'color': 'white',
                                                    'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',
                                                    "box-shadow": '10px 10px 5px grey', 'width': '30%',
                                                    'display': 'online-block',
                                                    'text-align': 'center'}),
 
                                 ])
-                        ], type='graph', fullscreen=False),
+                        ], type='bar', fullscreen=False),
+            dcc.Loading(
+                children=[
+                    html.Div(className='row',id='chart-2',
+                         style={'display': 'flex', 'margin-left': '2%', 'margin-right': '1%'}, children=[
+                                html.H4(id='result-canada-top', className='col s12 m6', style={'font-size': '18px', 'backgroundColor': '#0075af', 'color': 'white',
+                                       'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',
+                                       "box-shadow": '10px 10px 5px grey', 'width': '30%',
+                                       'display': 'online-block', 'text-align': 'center'}
+                                ),
+                                html.H4(id='result-canada-top2', className='col s12 m6', style={'font-size': '18px', 'backgroundColor': '#9b9b69', 'color': 'white',
+                                       'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',
+                                       "box-shadow": '10px 10px 5px grey', 'width': '30%',
+                                       'display': 'online-block', 'text-align': 'center'}
+                                ),
+                                html.H4(id='result-canada-top3', className='col s12 m6', style={'font-size': '18px', 'backgroundColor': '#9b9b69', 'color': 'white',
+                                       'text-shadow': '1px 1px 2px black, 0 0 25px blue, 0 0 5px darkblue',
+                                       "box-shadow": '10px 10px 5px grey', 'width': '30%',
+                                       'display': 'online-block', 'text-align': 'center'}
+                                )
+                        ]
+                    )
+                ]),
 
             dcc.Interval(
                 id='interval-component',
-                interval=2000 * 1000,
+                interval=60 * 1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
@@ -210,24 +223,38 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
                     ]),
 
                 ]),
-            ], type='graph', fullscreen=False),
+            ], type='bar', fullscreen=False),
             dcc.Loading(children=[
-                html.Div(children=[
+                html.Div(id='canada-chart',children=[
                     dcc.Graph(id='testtest2', animate=False,
                               style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40, 'height': 500}),
                 ])
-            ], type='doth', fullscreen=False),
+            ], type='bar', fullscreen=False),
 
         ]),
-        dcc.Tab(label='Weekly average', style={'text-shadow': '2px 2px 5px grey', 'font-size': 20}, children=[
-            html.H6("""Select a province""", style={'margin-right': '2em'}),
+        dcc.Tab(label='Weekly Average per Province', style={'text-shadow': '2px 2px 5px grey', 'font-size': 20}, children=[
+            html.Div(className='row-1', style={'columnCount': 2}, children=[
+                html.Div(children=[
+
+                    html.H6("""Select a province""", className='col s12 m6', style={"rowCount": 2, 'width': '100%'}),
+                    html.H6("Clear dropdown to see Canada cases", style={'font-size': "small", "font-style": "italic"}),
+                    html.A([
+                        html.Img(
+                            src='https://cdn2.iconfinder.com/data/icons/linkedin-ui-flat/48/LinkedIn_UI-03-512.png',
+                            style={'height': '10%', 'width': '10%', 'float': 'right', 'position': 'relative'}
+                        )
+                    ], href='https://www.linkedin.com/in/edgar-lizarraga/', target='_blank'),
+                ]),
+
+            ]),
             dcc.Dropdown(
                 id='input_3',
                 style=dict(width='40%', verticalAlign='middle'),
-                options=[({'label': i, 'value': i}) for i in bc['attributes.Province'].unique()],
+                options=[({'label': i, 'value': i}) for i in provinces],
                 placeholder='Select province',
                 multi=False
             ),
+            html.Div(id='intermediate', style={'display': 'none'}),
             dcc.Loading(loading_state=dict(is_loading=True),
                         children=[
                             html.Div(className='test3',
@@ -256,7 +283,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
                         ], type='default', fullscreen=False),
             dcc.Interval(
                 id='interval_for_weekly_graph',
-                interval=2000 * 1000,
+                interval=60 * 1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
@@ -265,22 +292,47 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
                               style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,
                                      'padding-top': '1%', 'height': 500})
                 ])
-            ], type='graph'),
+            ], type='bar'),
 
         ])
     ], style=dict(backgroundColor='black')),
 
 ])
+@app.callback(
+    Output('intermediate', 'children'),
+    [Input('interval-component', 'n_intervals')]
+)
+def get_data(time):
+    t = time
+    api_response = requests.get(
+        'https://services9.arcgis.com/pJENMVYPQqZZe20v/arcgis/rest/services/province_daily_totals/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json')
+    bc = json_normalize(api_response.json()['features'])
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'], unit='ms')
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'])
+    clean_list = ['REPATRIATED CDN', 'CANADA', 'PEI', "REPATRIATED", 'CANADA', 'NEWFOUNDLAND AND LABRADOR']
+    bc = bc[~bc['attributes.Province'].isin(clean_list)]
+    bc.sort_values(by=['attributes.OBJECTID'], inplace=True)
+    # still infected
+    bc['attributes.DailyRecovered'] = np.where(bc['attributes.DailyRecovered'] < 0,
+                                               bc['attributes.DailyRecovered'].abs(), bc['attributes.DailyRecovered'])
+    bc['Total_recov'] = bc.groupby(['attributes.Province'])['attributes.DailyRecovered'].cumsum()
+    bc['current'] = bc['attributes.TotalCases'] - bc['Total_recov']
+    bc['attributes.Province'].replace({"BC": 'BRITISH COLUMBIA'}, inplace=True)
 
+    return (bc.to_json(date_format='iso', orient='columns'))
 
 @app.callback(
     [Output(component_id='slider-graph', component_property='figure'), Output('second-result', 'children'),
-     Output('third', 'children'), Output('fourth', 'children'), Output('charts', 'style'), Output("fifth", 'children')],
-    [Input(component_id='input', component_property='value'), Input('interval-component', 'n_intervals')]
+     Output('third', 'children'), Output('fourth', 'children'), Output('charts', 'style'), Output("fifth", 'children'), Output('canada-chart', 'style'), Output('chart-2', 'style')],
+    [Input(component_id='input', component_property='value'), Input('intermediate', 'children')]
 )
-def update(value, n_intervals):
+def update(value, json):
     print(value)
-    print(n_intervals)
+    bc = pd.read_json(json, orient='list')
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate']).dt.date
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'])
+    bc.sort_values(by=['attributes.OBJECTID'], inplace=True)
+
     x = bc[bc['attributes.Province'] == value]['attributes.SummaryDate']
     y = bc[bc['attributes.Province'] == value]['attributes.DailyTotals']
     y2 = bc[bc['attributes.Province'] == value]['attributes.DailyRecovered']
@@ -294,7 +346,7 @@ def update(value, n_intervals):
         graph = go.Scatter(
             x=x,
             y=y,
-            name='Daily confirmed cases',
+            name='Confirmed',
             mode='lines',
             line=dict(shape='spline',
                       smoothing=1.3,
@@ -305,7 +357,7 @@ def update(value, n_intervals):
         trace = go.Scatter(
             x=x,
             y=ave_value,
-            name='Ave for confirmed cases',
+            name='Avg. confirmed cases',
             line=dict(width=3,
                       color='red'),
         )
@@ -313,7 +365,7 @@ def update(value, n_intervals):
         trace2 = go.Scatter(
             x=x,
             y=y2,
-            name='Daily cases recovered',
+            name='Recovered',
             line=dict(shape='spline',
                       smoothing=1.0,
                       color='#6B8E23'),
@@ -325,10 +377,12 @@ def update(value, n_intervals):
         layout = go.Layout(
             paper_bgcolor="white",
             plot_bgcolor='white',
-            xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)]),
-            yaxis=dict(range=[min([y], default=0), max(y) + int(70)]),
+            xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)],
+                       title='Days'),
+            yaxis=dict(range=[min([y], default=0), max(y) + int(70)],
+                       title='Cases'),
             font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
-            title='Daily infected, daily recovered',
+            title='Daily Covid-19 cases: ' + value,
             legend=dict(orientation='h',
                         yanchor='top',
                         xanchor='center',
@@ -337,10 +391,10 @@ def update(value, n_intervals):
         )
 
         return {'data': data,
-                'layout': layout}, f'{value} Latest report: {x.iloc[-1].month_name()} {x.iloc[-1].day}', f'New cases: {y.iloc[-1]}', f'Totals infected: {bc[bc["attributes.Province"] == value]["attributes.TotalCases"].max():,}', {
-                   'display': 'block'}, f'Active: {bc[bc["attributes.Province"] == value]["current"].iloc[-1]}'
+                'layout': layout}, f'{value} Latest report: {x.iloc[-1].month_name()} {x.iloc[-1].day}', f'New cases: {y.iloc[-1]}', f'Total infected: {bc[bc["attributes.Province"] == value]["attributes.TotalCases"].max():,}', {
+                   'display': 'block'}, f'Active: {bc[bc["attributes.Province"] == value]["current"].iloc[-1]}', {'display': 'none'}, {'display': 'none'}
 
-    if value is None or n_intervals:
+    if value is None:
         print('lets see')
         time.sleep(1)
 
@@ -348,17 +402,20 @@ def update(value, n_intervals):
             paper_bgcolor="white",
             plot_bgcolor='white',
         )
-        return {'data': [
-            ({'x': name, 'y': name}) for name in bc['attributes.Province'].unique()
-        ]}, "", "", "", {'display': 'none'}, ""
+        return {'data': [], 'layout': []}, "", "", "", {'display': 'none'}, "", {'display': 'block'}, {'display': 'flex'}
 
 
 @app.callback(
     Output('testtest', 'figure'),
-    [Input('input', 'value'), Input('interval-component', 'n_intervals')]
+    [Input('input', 'value'), Input('intermediate', 'children')]
 )
-def update_second_tap(value2, n_interval):
+def update_second_tap(value2, json):
     print(f"this is the second chart {value2}")
+    """we convert the data coming as json format"""
+    bc = pd.read_json(json, orient='list')
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate']).dt.date
+
+
 
     x = bc[bc['attributes.Province'] == value2]['attributes.SummaryDate']
     y = bc[bc['attributes.Province'] == value2]['attributes.TotalCases']
@@ -373,7 +430,7 @@ def update_second_tap(value2, n_interval):
         tap2_grapgh = go.Scatter(
             x=x,
             y=y,
-            name='Total infected',
+            name='Cumulative cases',
             mode='lines',
             line=dict(shape='spline',
                       smoothing=1.3,
@@ -384,7 +441,7 @@ def update_second_tap(value2, n_interval):
         trace = go.Scatter(
             x=x,
             y=y2,
-            name='Current infected',
+            name='Active cases',
             line=dict(shape='spline',
                       smoothing=1.0,
                       color='#3CB371'),
@@ -394,7 +451,7 @@ def update_second_tap(value2, n_interval):
         trace1 = go.Scatter(
             x=x,
             y=y3,
-            name='Deaths',
+            name='Cumulative deaths',
             line=dict(dash="dashdot",
                       smoothing=1.0,
                       color='#DC143C'),
@@ -407,9 +464,11 @@ def update_second_tap(value2, n_interval):
             paper_bgcolor="white",
             plot_bgcolor='white',
             font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
-            title='Infected vs recovered',
-            xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)]),
-            yaxis=dict(range=[min(y), max(y) + 70]),
+            title='Covid-19 curve: ' + value2,
+            xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)],
+                       title='Days'),
+            yaxis=dict(range=[min(y), max(y) + 70],
+                       title='Cases'),
             legend=dict(orientation='h',
                         yanchor='top',
                         xanchor='center',
@@ -419,7 +478,7 @@ def update_second_tap(value2, n_interval):
 
         return {'data': data, 'layout': layout}
 
-    elif value2 is None or n_interval:
+    elif value2 is None:
 
         time.sleep(1)
         df = bc
@@ -435,9 +494,14 @@ def update_second_tap(value2, n_interval):
 
 @app.callback(
     Output('pie', 'figure'),
-    [Input('input', 'value')]
+    [Input('input', 'value'), Input('intermediate', 'children')]
 )
-def bar(value):
+def bar(value, json):
+    """convert data coming from hidden div"""
+
+    bc = pd.read_json(json, orient='list')
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate']).dt.date
+
     labels = ['Total tested', 'Confirmed']
     values = [bc[bc['attributes.Province'] == value]['attributes.TotalTested'].max(),
               bc[bc['attributes.Province'] == value]['attributes.TotalCases'].max()]
@@ -459,10 +523,25 @@ def bar(value):
 @app.callback(
     [Output('slider-graph-third', 'figure'), Output('third-tap-result', 'children'),
      Output('third-tap-result_2', 'children'), Output('third-tap-result_3', 'children')],
-    [Input('input_3', 'value'), Input('interval_for_weekly_graph', 'n_intervals')]
+    [Input('input_3', 'value'), Input('intermediate', 'children')]
 )
-def weekly(value3, n_intervals):
-    print(final_test_ave_sum.dtypes)
+def weekly(value3, json):
+
+    """Convert data coming from hidden Div"""
+    bc = pd.read_json(json, orient='list')
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate']).dt.date
+    bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'])
+    bc.sort_values(by=['attributes.OBJECTID'], inplace=True)
+    mean = bc.groupby(['attributes.Province', pd.Grouper(key='attributes.SummaryDate', freq='W-SUN')])[
+        'attributes.DailyTotals'].mean().reset_index().round()
+    sum = bc.groupby(['attributes.Province', pd.Grouper(key='attributes.SummaryDate', freq='W-SUN')])[
+        'attributes.DailyTotals'].sum().reset_index().round()
+    newtable_group = pd.merge(mean, sum, on=['attributes.SummaryDate', 'attributes.Province'], how='left')
+    newtable_group.rename(
+        columns={'attributes.SummaryDate': 'date', 'attributes.DailyTotals_x': 'Ave', 'attributes.DailyTotals_y': 'Sum',
+                 "attributes.Province": 'Province'}, inplace=True)
+
+
 
     x = newtable_group[newtable_group['Province'] == value3]['date']
     y = newtable_group[newtable_group['Province'] == value3]['Ave']
@@ -490,7 +569,7 @@ def weekly(value3, n_intervals):
             x=x,
             y=y2,
             yaxis='y1',
-            name='Weekly totals',
+            name='Weekly total',
             line=dict(width=3,
                       color='#FAF0E6'),
             mode='markers',
@@ -507,22 +586,27 @@ def weekly(value3, n_intervals):
             plot_bgcolor='white',
             xaxis=dict(range=([min(x), max(x) + datetime.timedelta(days=7)]),
                        title='Weeks'),
-            yaxis=dict(range=([min(y), max(y2) + int(50)]),
-                       title='Ave per week',
+            yaxis=dict(range=([min(y), max(y2) + int(5)]),
+                       title='Cases',
                        showline=True),
-            font=dict(family='Courier New monospace', size=13, color='#7f7f7f')
+            font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
+            title='Weekly new cases for: ' + value3
         )
 
         return {'data': data,
-                'layout': layout}, f'Beginning of week on day {x.iloc[-2].day}', f"Previous week totals: {int(y.iloc[-2])}", f'Current week totals: {int(y.iloc[-1])}'
-    elif value3 is None or n_intervals:
+                'layout': layout}, f'Current week: {x.iloc[-2].month_name()} {(x.iloc[-2] + timedelta(1)).day} - {x.iloc[-1].month_name()} {x.iloc[-1].day} ', f"Previous week totals: {int(y.iloc[-2])}", f'Current week totals: {int(y.iloc[-1])}'
+    elif value3 is None:
 
-        print(f'third {value3} and {n_intervals}')
+        print(f'third {value3} and')
         time.sleep(1)
 
         layout = go.Layout(
             paper_bgcolor='white',
             plot_bgcolor='white',
+            yaxis=dict(title='Cases'),
+            xaxis=dict(title='Weeks'),
+            title="Weekly new cases",
+            font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
         )
 
         return {'data': [
@@ -533,7 +617,7 @@ def weekly(value3, n_intervals):
 
 
 @app.callback(
-    Output('testtest2', 'figure'),
+    [Output('testtest2', 'figure'), Output('result-canada-top', 'children'), Output('result-canada-top2', 'children'), Output('result-canada-top3', 'children')],
     [Input('interval-component', 'n_intervals')]
 )
 def update_second_tap(n_interval):
@@ -547,7 +631,7 @@ def update_second_tap(n_interval):
     tap2_grapgh = go.Scatter(
         x=x,
         y=y,
-        name='Acc values for Canada',
+        name='Cum. cases for Canada',
         mode='lines',
         line=dict(shape='spline',
                   smoothing=1.3,
@@ -558,17 +642,20 @@ def update_second_tap(n_interval):
     current = go.Scatter(
         x=x,
         y=table['diff'],
-        name='Still infected',
+        name='Active cases',
         line=dict(shape='spline',
                   smoothing=1.3,
-                  color='yellow'),
-        fill='tozeroy'
+                  color='#FF8C00'),
+        fill='tozeroy',
+        hoverlabel=dict(
+            bgcolor='white'
+        )
     )
 
     deaths = go.Scatter(
         x=x,
         y=table['total_deaths'],
-        name='Acc deaths',
+        name='Cum. deaths',
         line=dict(shape='spline',
                   smoothing=1.3,
                   color='red'),
@@ -580,10 +667,12 @@ def update_second_tap(n_interval):
     layout = go.Layout(
         paper_bgcolor="white",
         plot_bgcolor='white',
-        xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)]),
-        yaxis=dict(range=[min(y), max(y)]),
+        xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)],
+                   title='Days'),
+        yaxis=dict(range=[min(y), max(y)],
+                   title='Cases'),
         font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
-        title='Canada totals',
+        title='Covid-19 curve: Canada',
         legend=dict(orientation='h',
                     yanchor='top',
                     xanchor='center',
@@ -591,7 +680,8 @@ def update_second_tap(n_interval):
                     x=0.5)
     )
 
-    return {'data': data, 'layout': layout}
+    return {'data': data, 'layout': layout}, f'Total cases {int(table["total_cases"].max()):,}',f'Active cases: {int(table["diff"].max()):,}', f'Total deaths: {int(table["total_deaths"].max()):,}'
+
 
 if __name__=="__main__":
     app.run_server(debug=True)
