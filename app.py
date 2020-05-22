@@ -635,7 +635,7 @@ def update_second_tap(n_interval):
         mode='lines',
         line=dict(shape='spline',
                   smoothing=1.3,
-                  color='blue'),
+                  color='#6495ED'),
         fill='tozeroy'
     )
 
