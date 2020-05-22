@@ -645,7 +645,7 @@ def update_second_tap(n_interval):
         name='Active cases',
         line=dict(shape='spline',
                   smoothing=1.3,
-                  color='#FF8C00'),
+                  color='#3CB371'),
         fill='tozeroy',
         hoverlabel=dict(
             bgcolor='white'
