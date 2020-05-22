@@ -201,7 +201,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
 
             dcc.Interval(
                 id='interval-component',
-                interval=60 * 1000,
+                interval=2000 * 1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
@@ -283,7 +283,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
                         ], type='default', fullscreen=False),
             dcc.Interval(
                 id='interval_for_weekly_graph',
-                interval=60 * 1000,
+                interval=200 * 1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
