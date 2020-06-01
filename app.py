@@ -7,6 +7,7 @@ import requests
 import time
 import pandas as pd
 import numpy as np
+import fbprophet
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 
@@ -201,7 +202,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
 
             dcc.Interval(
                 id='interval-component',
-                interval=2000 * 1000,
+                interval=60 * 1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
@@ -214,6 +215,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
                                       ),
                             dcc.Graph(id='pie', style={'width': '100%'})
                         ]),
+
 
                         dcc.Graph(id='testtest', animate=False,
                                   style={'backgroundColor': 'white', 'color': 'white', 'margin-bottom': 40,
@@ -283,7 +285,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
                         ], type='default', fullscreen=False),
             dcc.Interval(
                 id='interval_for_weekly_graph',
-                interval=200 * 1000,
+                interval=60 * 1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
@@ -415,8 +417,15 @@ def update_second_tap(value2, json):
     bc = pd.read_json(json, orient='list')
     bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate']).dt.date
 
+    newdata = bc[bc['attributes.Province'] == value2]
+    newdata = newdata[['attributes.SummaryDate', 'attributes.TotalCases']]
+    newdata.rename(columns={'attributes.SummaryDate': 'ds', 'attributes.TotalCases': 'y'}, inplace=True)
+    prophet = fbprophet.Prophet(changepoint_prior_scale=0.10)
+    prophet.fit(newdata)
 
-
+    data_preds = prophet.make_future_dataframe(periods=15, freq='D')
+    data_preds_v2 = prophet.predict(data_preds)
+    print(data_preds_v2)
     x = bc[bc['attributes.Province'] == value2]['attributes.SummaryDate']
     y = bc[bc['attributes.Province'] == value2]['attributes.TotalCases']
     y2 = bc[bc['attributes.Province'] == value2]['current']
@@ -436,6 +445,29 @@ def update_second_tap(value2, json):
                       smoothing=1.3,
                       color='#6495ED'),
             fill='tozeroy'
+        )
+        pred = go.Scatter(
+            x = data_preds_v2['ds'],
+            y = data_preds_v2['yhat'],
+            name = 'Current trend forecast'
+        )
+
+        lower_pred = go.Scatter(
+            x = data_preds_v2['ds'],
+            y = data_preds_v2['yhat_lower'],
+            name = 'Best case forecast',
+            line=dict(color='rgb(0, 13, 26)', width=2, dash='dot'),
+            fillcolor='rgba(231, 234, 241,.88)',
+            fill='tonexty'
+        )
+
+        upper_pred = go.Scatter(
+            x=data_preds_v2['ds'],
+            y=data_preds_v2['yhat_upper'],
+            name='Worst case forecast',
+            line = dict(color='royalblue', width=2, dash='dash'),
+            fillcolor='rgba(231, 234, 241,.88)',
+            fill='tonexty'
         )
 
         trace = go.Scatter(
@@ -458,16 +490,16 @@ def update_second_tap(value2, json):
             fill='tozeroy'
         )
 
-        data = [tap2_grapgh, trace, trace1]
+        data = [tap2_grapgh, trace, trace1, pred, lower_pred, upper_pred]
 
         layout = go.Layout(
             paper_bgcolor="white",
             plot_bgcolor='white',
             font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
             title='Covid-19 curve: ' + value2,
-            xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)],
+            xaxis=dict(range=[min(x), max(data_preds_v2['ds']) + datetime.timedelta(days=5)],
                        title='Days'),
-            yaxis=dict(range=[min(y), max(y) + 70],
+            yaxis=dict(range=[min(y), max(data_preds_v2['yhat_upper']) + int(50)],
                        title='Cases'),
             legend=dict(orientation='h',
                         yanchor='top',
@@ -625,6 +657,23 @@ def update_second_tap(n_interval):
     time.sleep(1)
     table = canada(n_interval)
 
+    data_pred = table.rename(columns={'date': 'ds', "total_cases": 'y'})
+    prophet = fbprophet.Prophet(changepoint_prior_scale=0.15)
+    prophet.fit(data_pred)
+
+    pred = prophet.make_future_dataframe(periods=10, freq='D')
+    res = prophet.predict(pred)
+
+    # newdata = bc[bc['attributes.Province'] == value2]
+    # newdata = newdata[['attributes.SummaryDate', 'attributes.TotalCases']]
+    # newdata.rename(columns={'attributes.SummaryDate': 'ds', 'attributes.TotalCases': 'y'}, inplace=True)
+    # prophet = fbprophet.Prophet(changepoint_prior_scale=0.10)
+    # prophet.fit(newdata)
+    #
+    # data_preds = prophet.make_future_dataframe(periods=15, freq='D')
+    # data_preds_v2 = prophet.predict(data_preds)
+
+
     x = table['date']
     y = table['total_cases']
 
@@ -635,8 +684,30 @@ def update_second_tap(n_interval):
         mode='lines',
         line=dict(shape='spline',
                   smoothing=1.3,
-                  color='#6495ED'),
+                  color='blue'),
         fill='tozeroy'
+    )
+
+    lower_pred = go.Scatter(
+        x=res['ds'],
+        y=res['yhat_lower'],
+        name='Best case forecast',
+        line=dict(color='rgb(0, 13, 26)', width=2, dash='dot')
+    )
+
+    upper_pred = go.Scatter(
+        x=res['ds'],
+        y=res['yhat_upper'],
+        name='Worst case forecast',
+        line=dict(color='royalblue', width=2, dash='dash'),
+        fillcolor='rgba(231, 234, 241,.88)',
+        fill='tonexty'
+    )
+
+    pred = go.Scatter(
+        x=res['ds'],
+        y=res['yhat'],
+        name='Current trend forecast'
     )
 
     current = go.Scatter(
@@ -645,7 +716,7 @@ def update_second_tap(n_interval):
         name='Active cases',
         line=dict(shape='spline',
                   smoothing=1.3,
-                  color='#3CB371'),
+                  color='#FF8C00'),
         fill='tozeroy',
         hoverlabel=dict(
             bgcolor='white'
@@ -662,14 +733,14 @@ def update_second_tap(n_interval):
         fill='tozeroy'
     )
 
-    data = [tap2_grapgh, current, deaths]
+    data = [tap2_grapgh, current, deaths, lower_pred, pred, upper_pred]
 
     layout = go.Layout(
         paper_bgcolor="white",
         plot_bgcolor='white',
-        xaxis=dict(range=[min(x), max(x) + datetime.timedelta(days=7)],
+        xaxis=dict(range=[min(x), max(res['ds']) + datetime.timedelta(days=5)],
                    title='Days'),
-        yaxis=dict(range=[min(y), max(y)],
+        yaxis=dict(range=[min(y), max(res['yhat_upper']) + int(50)],
                    title='Cases'),
         font=dict(family='Courier New monospace', size=13, color='#7f7f7f'),
         title='Covid-19 curve: Canada',
@@ -681,7 +752,6 @@ def update_second_tap(n_interval):
     )
 
     return {'data': data, 'layout': layout}, f'Total cases {int(table["total_cases"].max()):,}',f'Active cases: {int(table["diff"].max()):,}', f'Total deaths: {int(table["total_deaths"].max()):,}'
-
 
 if __name__=="__main__":
     app.run_server(debug=True)
