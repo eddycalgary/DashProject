@@ -34,7 +34,7 @@ post==2019.4.13
 public==2019.4.13
 PyMeeus==0.3.7
 pyparsing==2.4.7
-pystan==2.19.1.1
+pystan==2.17.1.0
 python-dateutil==2.8.1
 pytz==2020.1
 query-string==2019.4.13
