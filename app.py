@@ -202,7 +202,7 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
 
             dcc.Interval(
                 id='interval-component',
-                interval=2000 * 1000,
+                interval=2010 * 1000,
                 n_intervals=0
             ),
             dcc.Loading(children=[
