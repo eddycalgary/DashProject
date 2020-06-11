@@ -428,7 +428,7 @@ def update_second_tap(value2, json):
     print(data_preds_v2)
     x = bc[bc['attributes.Province'] == value2]['attributes.SummaryDate']
     y = bc[bc['attributes.Province'] == value2]['attributes.TotalCases']
-    y2 = bc[bc['attributes.Province'] == value2]['current']
+    y2 = bc[bc['attributes.Province'] == value2]['attributes.TotalActive']
     y3 = bc[bc['attributes.Province'] == value2]['attributes.TotalDeaths']
 
     if value2:
