@@ -394,7 +394,7 @@ def update(value, json):
 
         return {'data': data,
                 'layout': layout}, f'{value} Latest report: {x.iloc[-1].month_name()} {x.iloc[-1].day}', f'New cases: {y.iloc[-1]}', f'Total infected: {bc[bc["attributes.Province"] == value]["attributes.TotalCases"].max():,}', {
-                   'display': 'block'}, f'Active: {bc[bc["attributes.Province"] == value]["current"].iloc[-1]}', {'display': 'none'}, {'display': 'none'}
+                   'display': 'block'}, f'Active: {bc[bc["attributes.Province"] == value]["attributes.TotalActive"].iloc[-1]}', {'display': 'none'}, {'display': 'none'}
 
     if value is None:
         print('lets see')
