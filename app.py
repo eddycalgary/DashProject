@@ -306,8 +306,8 @@ app.layout = html.Div(id="wrapper", style={"margin-left": 'auto', "margin-right"
 )
 def get_data(time):
     t = time
-    api_response = requests.get(
-        'https://services9.arcgis.com/pJENMVYPQqZZe20v/arcgis/rest/services/province_daily_totals/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json')
+    URL = 'https://services9.arcgis.com/pJENMVYPQqZZe20v/ArcGIS/rest/services/province_daily_totals/FeatureServer/0/query?where=1%3D1&objectIds=&time=&resultType=tile&outFields=*&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=5000&sqlFormat=none&f=json&token='
+    api_response = requests.get(URL)
     bc = json_normalize(api_response.json()['features'])
     bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'], unit='ms')
     bc['attributes.SummaryDate'] = pd.to_datetime(bc['attributes.SummaryDate'])
