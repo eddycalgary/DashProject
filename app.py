@@ -423,7 +423,7 @@ def update_second_tap(value2, json):
     prophet = fbprophet.Prophet(changepoint_prior_scale=0.10)
     prophet.fit(newdata)
 
-    data_preds = prophet.make_future_dataframe(periods=15, freq='D')
+    data_preds = prophet.make_future_dataframe(periods=8, freq='D')
     data_preds_v2 = prophet.predict(data_preds)
     print(data_preds_v2)
     x = bc[bc['attributes.Province'] == value2]['attributes.SummaryDate']
